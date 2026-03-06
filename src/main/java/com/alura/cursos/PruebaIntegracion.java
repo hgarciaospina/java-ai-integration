@@ -1,40 +1,38 @@
 package com.alura.cursos;
 
-import io.github.cdimascio.dotenv.Dotenv;
-import io.github.sashirestela.openai.SimpleOpenAI;
-import io.github.sashirestela.openai.domain.chat.ChatMessage;
-import io.github.sashirestela.openai.domain.chat.ChatRequest;
-
-import java.util.List;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 public class PruebaIntegracion {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
-        Dotenv dotenv = Dotenv.load();
+        String apiKey = System.getenv("MISTRAL_API_KEY");
 
-        var user = "Genere 5 productos";
-        var system = "Eres un generador de productos de un ecommerce de tecnología "
-                + "y debes responder solo el nombre del producto y su precio.";
+        String json = """
+        {
+          "model": "mistral-small-latest",
+          "messages": [
+            {"role": "system", "content": "Eres un generador de productos tecnológicos"},
+            {"role": "user", "content": "Genera 5 productos con su precio"}
+          ]
+        }
+        """;
 
-        var openAI = SimpleOpenAI.builder()
-                .apiKey(dotenv.get("OPENAI_API_KEY"))
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.mistral.ai/v1/chat/completions"))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(json))
                 .build();
 
-        ChatRequest request = ChatRequest.builder()
-                .model("gpt-4o-mini")
-                .messages(List.of(
-                        ChatMessage.SystemMessage.of(system),
-                        ChatMessage.UserMessage.of(user)
-                ))
-                .build();
+        HttpClient client = HttpClient.newHttpClient();
 
-        var response = openAI.chatCompletions()
-                .create(request)
-                .join();   // 👈 esperar respuesta
+        HttpResponse<String> response =
+                client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        response.getChoices().forEach(choice ->
-                System.out.println(choice.getMessage().getContent())
-        );
+        System.out.println(response.body());
     }
 }
